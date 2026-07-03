@@ -4,6 +4,10 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from services.database import initialize_database
+
+print(">>> Imported services.database successfully <<<")
+
 load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -25,11 +29,13 @@ class RaidBot(commands.Bot):
 
         guild = discord.Object(id=GUILD_ID)
 
-        print("Loading extension...")
-
+        print("Loading Raid Cog...")
         await self.load_extension("cogs.raid")
+        print("✅ Raid Cog Loaded")
 
-        print("Extension loaded!")
+        print("Loading Members Cog...")
+        await self.load_extension("cogs.members")
+        print("✅ Members Cog Loaded")
 
         self.tree.copy_global_to(guild=guild)
 
@@ -43,6 +49,10 @@ bot = RaidBot()
 
 @bot.event
 async def on_ready():
+    print(">>> on_ready fired <<<")
+
+    initialize_database()
+
     print(f"Logged in as {bot.user}")
 
 
