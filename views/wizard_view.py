@@ -20,63 +20,51 @@ class WizardView(discord.ui.View):
         return WizardService.get_session(self.owner_id)
 
     def refresh(self):
-
         self.clear_items()
 
         match self.session.step:
-
             case 1:
                 self.build_faction()
-
             case 2:
                 self.build_operation()
-
             case 3:
                 self.build_difficulty()
-
             case 4:
                 self.build_raid_size()
+            case 5:
+                self.build_review()
 
     def build_faction(self):
-
         self.add_item(FactionButton("Empire"))
         self.add_item(FactionButton("Republic"))
 
     def build_operation(self):
-
         self.add_item(OperationSelect())
 
     def build_difficulty(self):
-
         self.add_item(DifficultySelect())
 
     def build_raid_size(self):
-
         self.add_item(RaidSizeButton(8))
         self.add_item(RaidSizeButton(16))
+
+    def build_review(self):
+        self.add_item(CreateRaidButton())
 
 
 class FactionButton(discord.ui.Button):
     def __init__(self, faction: str):
-
-        style = (
-            discord.ButtonStyle.red
-            if faction == "Empire"
-            else discord.ButtonStyle.blurple
-        )
-
-        emoji = "🔴" if faction == "Empire" else "🔵"
-
         super().__init__(
             label=faction,
-            emoji=emoji,
-            style=style,
+            emoji="🔴" if faction == "Empire" else "🔵",
+            style=discord.ButtonStyle.red
+            if faction == "Empire"
+            else discord.ButtonStyle.blurple,
         )
 
         self.faction = faction
 
     async def callback(self, interaction: discord.Interaction):
-
         view: WizardView = self.view
         session = view.session
 
@@ -93,28 +81,24 @@ class FactionButton(discord.ui.Button):
 
 class OperationSelect(discord.ui.Select):
     def __init__(self):
-
-        options = [
-            discord.SelectOption(label="Eternity Vault"),
-            discord.SelectOption(label="Karagga's Palace"),
-            discord.SelectOption(label="Explosive Conflict"),
-            discord.SelectOption(label="Terror From Beyond"),
-            discord.SelectOption(label="Scum and Villainy"),
-            discord.SelectOption(label="Dread Fortress"),
-            discord.SelectOption(label="Dread Palace"),
-            discord.SelectOption(label="Temple of Sacrifice"),
-            discord.SelectOption(label="Gods from the Machine"),
-            discord.SelectOption(label="The Nature of Progress"),
-            discord.SelectOption(label="R-4 Anomaly"),
-        ]
-
         super().__init__(
-            placeholder="Select an Operation...",
-            options=options,
+            placeholder="Choose Operation...",
+            options=[
+                discord.SelectOption(label="Eternity Vault"),
+                discord.SelectOption(label="Karagga's Palace"),
+                discord.SelectOption(label="Explosive Conflict"),
+                discord.SelectOption(label="Terror From Beyond"),
+                discord.SelectOption(label="Scum and Villainy"),
+                discord.SelectOption(label="Dread Fortress"),
+                discord.SelectOption(label="Dread Palace"),
+                discord.SelectOption(label="Temple of Sacrifice"),
+                discord.SelectOption(label="Gods from the Machine"),
+                discord.SelectOption(label="The Nature of Progress"),
+                discord.SelectOption(label="R-4 Anomaly"),
+            ],
         )
 
     async def callback(self, interaction: discord.Interaction):
-
         view: WizardView = self.view
         session = view.session
 
@@ -131,9 +115,8 @@ class OperationSelect(discord.ui.Select):
 
 class DifficultySelect(discord.ui.Select):
     def __init__(self):
-
         super().__init__(
-            placeholder="Select Difficulty...",
+            placeholder="Choose Difficulty...",
             options=[
                 discord.SelectOption(label="Story Mode"),
                 discord.SelectOption(label="Veteran Mode"),
@@ -142,7 +125,6 @@ class DifficultySelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-
         view: WizardView = self.view
         session = view.session
 
@@ -159,7 +141,6 @@ class DifficultySelect(discord.ui.Select):
 
 class RaidSizeButton(discord.ui.Button):
     def __init__(self, size: int):
-
         super().__init__(
             label=f"{size} Player",
             style=discord.ButtonStyle.green,
@@ -168,13 +149,29 @@ class RaidSizeButton(discord.ui.Button):
         self.size = size
 
     async def callback(self, interaction: discord.Interaction):
-
         view: WizardView = self.view
         session = view.session
 
         session.raid_size = self.size
+        session.step = 5
 
+        view.refresh()
+
+        await interaction.response.edit_message(
+            embed=build_wizard_embed(session),
+            view=view,
+        )
+
+
+class CreateRaidButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="🚀 Create Raid",
+            style=discord.ButtonStyle.green,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_message(
-            "✅ Raid size saved.\n\nReview screen is next.",
+            "🚧 Raid creation will be wired into RaidManager next.",
             ephemeral=True,
         )

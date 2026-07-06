@@ -13,7 +13,6 @@ class RaidWizardSession:
     faction: str = ""
     operation: str = ""
     difficulty: str = ""
-
     raid_size: int = 8
 
     # -------------------------
@@ -23,6 +22,9 @@ class RaidWizardSession:
     raid_date: str = ""
     raid_time: str = ""
 
+    # Unix timestamp (filled in later)
+    raid_timestamp: int | None = None
+
     # -------------------------
     # Leadership
     # -------------------------
@@ -31,7 +33,7 @@ class RaidWizardSession:
     raid_leader_id: int | None = None
 
     # -------------------------
-    # Announcements
+    # Announcement
     # -------------------------
 
     announcement_channel_id: int | None = None
