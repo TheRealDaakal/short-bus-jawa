@@ -6,8 +6,10 @@ from discord.ext import commands
 
 from services.raid_manager import RaidManager
 from views.raid_view import RaidView
-from views.raid_schedule_modal import RaidScheduleModal
+from views.wizard_view import WizardView
 from utils.embed_builder import build_raid_embed
+from utils.wizard_embed_builder import build_wizard_embed
+from services.wizard_service import WizardService
 from utils.constants import OPERATIONS
 
 print(">>> raid.py loaded <<<")
@@ -39,7 +41,7 @@ class Raid(commands.Cog):
 
         await interaction.response.send_message(
             embed=build_raid_embed(session),
-            view=RaidView(raid_id)
+            view=RaidView(raid_id),
         )
 
         message = await interaction.original_response()
@@ -50,12 +52,18 @@ class Raid(commands.Cog):
 
     @raid.command(
         name="schedule",
-        description="Schedule a new raid"
+        description="Create a new raid"
     )
     async def schedule(self, interaction: discord.Interaction):
 
-        await interaction.response.send_modal(
-            RaidScheduleModal()
+        WizardService.create_session(interaction.user.id)
+
+        session = WizardService.get_session(interaction.user.id)
+
+        await interaction.response.send_message(
+            embed=build_wizard_embed(session),
+            view=WizardView(interaction.user.id),
+            ephemeral=True,
         )
 
 

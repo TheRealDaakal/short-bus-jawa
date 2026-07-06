@@ -64,7 +64,7 @@ class RaidManager:
 
         session.remove_player(user.id)
 
-        if len(session.tanks) >= 2:
+        if len(session.tanks) >= session.max_tanks:
             return False
 
         session.tanks.append(
@@ -91,7 +91,7 @@ class RaidManager:
 
         session.remove_player(user.id)
 
-        if len(session.healers) >= 2:
+        if len(session.healers) >= session.max_healers:
             return False
 
         session.healers.append(

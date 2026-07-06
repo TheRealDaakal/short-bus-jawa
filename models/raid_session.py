@@ -11,6 +11,8 @@ class RaidSession:
         raid_leader="",
         raid_leader_id=None,
         raid_id=None,
+        faction="Empire",
+        raid_size=8,
     ):
         self.raid_id = raid_id
 
@@ -22,16 +24,41 @@ class RaidSession:
         self.raid_leader = raid_leader
         self.raid_leader_id = raid_leader_id
 
+        # -------------------------
         # Raid Status
+        # -------------------------
+
         self.locked = False
         self.completed = False
 
+        # -------------------------
         # Discord Message Tracking
+        # -------------------------
+
         self.message = None
         self.message_id = None
         self.channel_id = None
 
+        # -------------------------
+        # Raid Configuration
+        # -------------------------
+
+        self.faction = faction
+        self.raid_size = raid_size
+
+        if raid_size == 8:
+            self.max_tanks = 2
+            self.max_healers = 2
+            self.max_dps = 4
+        else:
+            self.max_tanks = 2
+            self.max_healers = 4
+            self.max_dps = 10
+
+        # -------------------------
         # Raid Members
+        # -------------------------
+
         self.tanks: list[RaidMember] = []
         self.healers: list[RaidMember] = []
         self.dps: list[RaidMember] = []
