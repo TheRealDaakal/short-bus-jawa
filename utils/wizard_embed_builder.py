@@ -3,6 +3,16 @@ import discord
 TOTAL_STEPS = 8
 
 
+def value_or_dash(value):
+    if value is None:
+        return "—"
+
+    if isinstance(value, str) and value.strip() == "":
+        return "—"
+
+    return str(value)
+
+
 def build_wizard_embed(session):
 
     titles = {
@@ -24,7 +34,7 @@ def build_wizard_embed(session):
         5: "Set the raid date and start time.",
         6: "Choose which channel will receive raid announcements.",
         7: "Choose who should be notified.",
-        8: "Review your raid before creating it.",
+        8: "Everything look good? Click **Create Raid**.",
     }
 
     embed = discord.Embed(
@@ -39,16 +49,64 @@ def build_wizard_embed(session):
     )
 
     embed.add_field(
-        name="Current Settings",
+        name="📋 Raid Details",
         value=(
-            f"**Faction:** {session.faction or '—'}\n"
-            f"**Operation:** {session.operation or '—'}\n"
-            f"**Difficulty:** {session.difficulty or '—'}\n"
-            f"**Raid Size:** {session.raid_size}-Player"
+            f"**Faction**\n"
+            f"{value_or_dash(session.faction)}\n\n"
+
+            f"**Operation**\n"
+            f"{value_or_dash(session.operation)}\n\n"
+
+            f"**Difficulty**\n"
+            f"{value_or_dash(session.difficulty)}\n\n"
+
+            f"**Raid Size**\n"
+            f"{session.raid_size}-Player"
         ),
         inline=False,
     )
 
-    embed.set_footer(text="Short Bus Jawa v1.0")
+    embed.add_field(
+        name="📅 Schedule",
+        value=(
+            f"**Date**\n"
+            f"{value_or_dash(session.raid_date)}\n\n"
+
+            f"**Time**\n"
+            f"{value_or_dash(session.raid_time)}"
+        ),
+        inline=False,
+    )
+
+    channel = (
+        f"<#{session.announcement_channel_id}>"
+        if session.announcement_channel_id
+        else "—"
+    )
+
+    if session.ping_type == "everyone":
+        ping = "@everyone"
+    elif session.ping_type == "here":
+        ping = "@here"
+    elif session.ping_type == "role":
+        ping = "Raid Role"
+    else:
+        ping = "—"
+
+    embed.add_field(
+        name="📣 Announcement",
+        value=(
+            f"**Channel**\n"
+            f"{channel}\n\n"
+
+            f"**Ping**\n"
+            f"{ping}"
+        ),
+        inline=False,
+    )
+
+    embed.set_footer(
+        text=f"Short Bus Jawa • Step {session.step}/{TOTAL_STEPS}"
+    )
 
     return embed
