@@ -90,15 +90,10 @@ class WizardView(discord.ui.View):
         self.add_item(RaidSizeButton(16))
 
     def build_date(self):
-        from views.date_select import MonthSelect, DaySelectLow, DaySelectHigh
-        self.add_item(MonthSelect(self.session))
-        self.add_item(DaySelectLow(self.session))
-        self.add_item(DaySelectHigh(self.session))
+        self.add_item(OpenDateModalButton())
 
     def build_time(self):
-        from views.time_select import HourSelect, MinuteSelect
-        self.add_item(HourSelect(self.session))
-        self.add_item(MinuteSelect(self.session))
+        self.add_item(OpenTimeModalButton())
 
     def build_timezone(self):
         from views.timezone_select import TimezoneSelect
@@ -256,6 +251,28 @@ class RaidSizeButton(discord.ui.Button):
             embed=build_wizard_embed(session),
             view=view,
         )
+
+
+class OpenDateModalButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="📅 Set Raid Date", style=discord.ButtonStyle.blurple)
+
+    async def callback(self, interaction: discord.Interaction):
+        from views.date_modal import DateModal
+
+        view: WizardView = self.view
+        await interaction.response.send_modal(DateModal(view.owner_id))
+
+
+class OpenTimeModalButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="🕗 Set Raid Time", style=discord.ButtonStyle.blurple)
+
+    async def callback(self, interaction: discord.Interaction):
+        from views.time_modal import TimeModal
+
+        view: WizardView = self.view
+        await interaction.response.send_modal(TimeModal(view.owner_id))
 
 
 class CreateRaidButton(discord.ui.Button):
