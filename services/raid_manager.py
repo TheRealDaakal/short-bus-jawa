@@ -79,6 +79,22 @@ class RaidManager:
     # -------------------------
 
     @classmethod
+    def _total_signed_up(cls, session) -> int:
+        """
+        Tank + Healer + DPS + Floater all draw from the same 8/16-person
+        pool, since a Floater can occupy a slot that would otherwise go
+        to an under-filled main role. Bench is intentionally excluded -
+        it's overflow beyond the raid's actual size.
+        """
+
+        return (
+            len(session.tanks)
+            + len(session.healers)
+            + len(session.dps)
+            + len(session.floaters)
+        )
+
+    @classmethod
     def join_tank(
         cls,
         session,
@@ -93,6 +109,9 @@ class RaidManager:
         session.remove_player(user.id)
 
         if len(session.tanks) >= session.max_tanks:
+            return False
+
+        if cls._total_signed_up(session) >= session.raid_size:
             return False
 
         session.tanks.append(
@@ -122,6 +141,9 @@ class RaidManager:
         if len(session.healers) >= session.max_healers:
             return False
 
+        if cls._total_signed_up(session) >= session.raid_size:
+            return False
+
         session.healers.append(
             RaidMember(
                 member=user,
@@ -147,6 +169,9 @@ class RaidManager:
         session.remove_player(user.id)
 
         if len(session.dps) >= session.max_dps:
+            return False
+
+        if cls._total_signed_up(session) >= session.raid_size:
             return False
 
         session.dps.append(
@@ -203,14 +228,7 @@ class RaidManager:
 
         session.remove_player(user.id)
 
-        total_signed_up = (
-            len(session.tanks)
-            + len(session.healers)
-            + len(session.dps)
-            + len(session.floaters)
-        )
-
-        if total_signed_up >= session.raid_size:
+        if cls._total_signed_up(session) >= session.raid_size:
             return False
 
         session.floaters.append(
