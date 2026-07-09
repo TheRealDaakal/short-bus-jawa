@@ -200,6 +200,64 @@ def get_welcome_message(guild_id: int) -> str | None:
     return row[0] if row else None
 
 
+def set_leave_message(guild_id: int, message: str) -> None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        _ensure_row(cursor, guild_id)
+
+        cursor.execute("""
+            UPDATE guild_settings
+            SET leave_message = ?
+            WHERE guild_id = ?
+        """, (message, guild_id))
+
+    log.info("guild=%s leave_message updated", guild_id)
+
+
+def get_leave_message(guild_id: int) -> str | None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT leave_message
+            FROM guild_settings
+            WHERE guild_id = ?
+        """, (guild_id,))
+
+        row = cursor.fetchone()
+
+    return row[0] if row else None
+
+
+def set_welcome_dm_message(guild_id: int, message: str) -> None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        _ensure_row(cursor, guild_id)
+
+        cursor.execute("""
+            UPDATE guild_settings
+            SET welcome_dm_message = ?
+            WHERE guild_id = ?
+        """, (message, guild_id))
+
+    log.info("guild=%s welcome_dm_message updated", guild_id)
+
+
+def get_welcome_dm_message(guild_id: int) -> str | None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT welcome_dm_message
+            FROM guild_settings
+            WHERE guild_id = ?
+        """, (guild_id,))
+
+        row = cursor.fetchone()
+
+    return row[0] if row else None
+
+
 def set_join_role(guild_id: int, role_id: int) -> None:
     with get_connection() as conn:
         cursor = conn.cursor()

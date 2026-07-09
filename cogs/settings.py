@@ -138,6 +138,46 @@ class Settings(commands.Cog):
             ephemeral=True,
         )
 
+    @settings.command(name="leavemessage", description="Set the message posted to the welcome channel when a member leaves")
+    @app_commands.describe(
+        message="Leave message - supports {member}, {member_name}, {server}, {member_count} placeholders"
+    )
+    async def leavemessage(self, interaction: discord.Interaction, message: str):
+        if not PermissionService.can_manage_settings(interaction.user):
+            await interaction.response.send_message("You don't have permission to change settings.", ephemeral=True)
+            return
+
+        guild_settings_service.set_leave_message(interaction.guild_id, message)
+
+        from cogs.welcome import format_welcome_message
+
+        preview = format_welcome_message(message, interaction.user)
+
+        await interaction.response.send_message(
+            f"✅ Leave message updated. Preview:\n{preview}",
+            ephemeral=True,
+        )
+
+    @settings.command(name="welcomedm", description="Set a DM sent to new members on join (leave blank/unset to not DM anyone)")
+    @app_commands.describe(
+        message="DM message - supports {member}, {member_name}, {server}, {member_count} placeholders"
+    )
+    async def welcomedm(self, interaction: discord.Interaction, message: str):
+        if not PermissionService.can_manage_settings(interaction.user):
+            await interaction.response.send_message("You don't have permission to change settings.", ephemeral=True)
+            return
+
+        guild_settings_service.set_welcome_dm_message(interaction.guild_id, message)
+
+        from cogs.welcome import format_welcome_message
+
+        preview = format_welcome_message(message, interaction.user)
+
+        await interaction.response.send_message(
+            f"✅ New members will now be DMed on join. Preview:\n{preview}",
+            ephemeral=True,
+        )
+
     @settings.command(name="joinrole", description="Set a role to auto-assign to every new member on join")
     @app_commands.describe(role="The role new members get automatically (e.g. a Quarantine/unverified role)")
     async def joinrole(self, interaction: discord.Interaction, role: discord.Role):
@@ -251,6 +291,8 @@ class Settings(commands.Cog):
         raid_leader_role_id = guild_settings_service.get_raid_leader_role(interaction.guild_id)
         welcome_channel_id = guild_settings_service.get_welcome_channel(interaction.guild_id)
         welcome_message = guild_settings_service.get_welcome_message(interaction.guild_id)
+        leave_message = guild_settings_service.get_leave_message(interaction.guild_id)
+        welcome_dm_message = guild_settings_service.get_welcome_dm_message(interaction.guild_id)
         join_role_id = guild_settings_service.get_join_role(interaction.guild_id)
         automod_enabled = guild_settings_service.get_automod_enabled(interaction.guild_id)
         automod_words = guild_settings_service.get_banned_words(interaction.guild_id)
@@ -302,11 +344,21 @@ class Settings(commands.Cog):
             inline=False,
         )
 
-        from cogs.welcome import DEFAULT_WELCOME_MESSAGE
+        from cogs.welcome import DEFAULT_WELCOME_MESSAGE, DEFAULT_LEAVE_MESSAGE
 
         embed.add_field(
             name="Welcome Message",
             value=welcome_message or f"Default: {DEFAULT_WELCOME_MESSAGE}",
+            inline=False,
+        )
+        embed.add_field(
+            name="Leave Message",
+            value=leave_message or f"Default: {DEFAULT_LEAVE_MESSAGE}",
+            inline=False,
+        )
+        embed.add_field(
+            name="Welcome DM",
+            value=welcome_dm_message or "Not set (new members aren't DMed)",
             inline=False,
         )
         embed.add_field(

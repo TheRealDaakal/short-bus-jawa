@@ -109,6 +109,16 @@ def initialize_database():
             pass
 
         try:
+            cursor.execute("ALTER TABLE guild_settings ADD COLUMN leave_message TEXT")
+        except sqlite3.OperationalError:
+            pass
+
+        try:
+            cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_dm_message TEXT")
+        except sqlite3.OperationalError:
+            pass
+
+        try:
             cursor.execute("ALTER TABLE guild_settings ADD COLUMN automod_enabled INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass
