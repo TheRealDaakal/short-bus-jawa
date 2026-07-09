@@ -35,9 +35,9 @@ class DisciplineSelect(discord.ui.Select):
         session = RaidManager.get_session(self.raid_id)
 
         if session is None:
-            await interaction.response.send_message(
-                "Raid session not found.",
-                ephemeral=True,
+            await interaction.response.edit_message(
+                content="Raid session not found.",
+                view=None,
             )
             return
 
@@ -66,18 +66,17 @@ class DisciplineSelect(discord.ui.Select):
             )
 
         if not success:
-            await interaction.response.send_message(
-                "That role is already full or the raid is locked.",
-                ephemeral=True,
+            await interaction.response.edit_message(
+                content="That role is already full or the raid is locked.",
+                view=None,
             )
             return
 
         await RaidManager.refresh_board(session)
 
-        await interaction.response.send_message(
-            f"✅ You signed up as\n"
-            f"**{self.combat_style} • {discipline}**",
-            ephemeral=True,
+        await interaction.response.edit_message(
+            content=f"✅ You signed up as\n**{self.combat_style} • {discipline}**",
+            view=None,
         )
 
 

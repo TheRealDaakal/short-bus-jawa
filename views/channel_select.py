@@ -23,7 +23,7 @@ class AnnouncementChannelSelect(discord.ui.ChannelSelect):
         channel = self.values[0]
 
         session.announcement_channel_id = channel.id
-        session.step = 8
+        session.step = 10
 
         view.refresh()
 

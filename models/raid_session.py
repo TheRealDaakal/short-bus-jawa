@@ -13,6 +13,9 @@ class RaidSession:
         raid_id=None,
         faction="Empire",
         raid_size=8,
+        raid_timestamp=None,
+        raid_end_timestamp=None,
+        raid_timezone="",
     ):
         self.raid_id = raid_id
 
@@ -20,6 +23,9 @@ class RaidSession:
         self.difficulty = difficulty
         self.raid_date = raid_date
         self.raid_time = raid_time
+        self.raid_timestamp = raid_timestamp
+        self.raid_end_timestamp = raid_end_timestamp
+        self.raid_timezone = raid_timezone
 
         self.raid_leader = raid_leader
         self.raid_leader_id = raid_leader_id
@@ -63,6 +69,15 @@ class RaidSession:
         self.healers: list[RaidMember] = []
         self.dps: list[RaidMember] = []
         self.bench: list[RaidMember] = []
+        self.floaters: list[RaidMember] = []
+
+        # -------------------------
+        # Reminder Tracking
+        # -------------------------
+        # Which automated reminders/actions have already fired for this
+        # raid, so the scheduler doesn't send them twice. Values used:
+        # "24h", "30m", "start", "deleted".
+        self.reminders_sent: set[str] = set()
 
     def remove_player(self, user_id: int):
 
@@ -83,5 +98,10 @@ class RaidSession:
 
         self.bench = [
             player for player in self.bench
+            if player.id != user_id
+        ]
+
+        self.floaters = [
+            player for player in self.floaters
             if player.id != user_id
         ]

@@ -28,6 +28,11 @@ class PingTypeSelect(discord.ui.Select):
                     value="role",
                     emoji="🎯",
                 ),
+                discord.SelectOption(
+                    label="No Ping",
+                    value="none",
+                    emoji="🔕",
+                ),
             ],
         )
 
@@ -37,7 +42,7 @@ class PingTypeSelect(discord.ui.Select):
         session = view.session
 
         session.ping_type = self.values[0]
-        session.step = 9
+        session.step = 11
 
         view.refresh()
 

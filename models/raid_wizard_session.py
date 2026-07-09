@@ -21,6 +21,8 @@ class RaidWizardSession:
 
     raid_date: str = ""
     raid_time: str = ""
+    raid_timezone: str = ""
+    raid_duration_minutes: int = 120
 
     # Unix timestamp (filled in later)
     raid_timestamp: int | None = None
