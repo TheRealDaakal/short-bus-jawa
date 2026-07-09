@@ -12,6 +12,7 @@ from views.wizard_view import WizardView
 from utils.wizard_embed_builder import build_wizard_embed
 from services.wizard_service import WizardService
 from services.raid_poster import create_and_post_raid
+from services.raid_manager import RaidManager
 from services import user_settings_service, raid_template_service
 from services.permission_service import PermissionService
 from utils.swtor_content import (
@@ -358,6 +359,66 @@ class Raid(commands.Cog):
             await interaction.response.send_message(f"✅ Template #{template_id} resumed.", ephemeral=True)
         else:
             await interaction.response.send_message(f"No template #{template_id} found.", ephemeral=True)
+
+    @raid.command(name="add", description="Manually add a member to a raid role (officer only)")
+    @app_commands.describe(
+        raid_id="The raid's ID (shown in the board's footer, e.g. 'Raid #12')",
+        role="Which role to add them as",
+        member="The member to add",
+    )
+    @app_commands.choices(role=[
+        app_commands.Choice(name="Tank", value="tank"),
+        app_commands.Choice(name="Healer", value="healer"),
+        app_commands.Choice(name="DPS", value="dps"),
+        app_commands.Choice(name="Bench", value="bench"),
+        app_commands.Choice(name="Floater", value="floater"),
+    ])
+    async def add(
+        self,
+        interaction: discord.Interaction,
+        raid_id: int,
+        role: app_commands.Choice[str],
+        member: discord.Member,
+    ):
+        if not PermissionService.is_officer(interaction.user):
+            await interaction.response.send_message(
+                "❌ Only raid officers can add members to a raid.",
+                ephemeral=True,
+            )
+            return
+
+        session = RaidManager.get_session(raid_id)
+
+        if session is None:
+            await interaction.response.send_message(
+                f"⚠️ No active raid found with ID #{raid_id}.",
+                ephemeral=True,
+            )
+            return
+
+        join_fn = {
+            "tank": RaidManager.join_tank,
+            "healer": RaidManager.join_healer,
+            "dps": RaidManager.join_dps,
+            "bench": RaidManager.join_bench,
+            "floater": RaidManager.join_floater,
+        }[role.value]
+
+        success = join_fn(session=session, user=member)
+
+        if not success:
+            await interaction.response.send_message(
+                f"⚠️ That role is already full, or raid #{raid_id} is locked.",
+                ephemeral=True,
+            )
+            return
+
+        await RaidManager.refresh_board(session)
+
+        await interaction.response.send_message(
+            f"✅ Added {member.mention} as **{role.name}** to raid #{raid_id}.",
+            ephemeral=True,
+        )
 
     @app_commands.command(name="roll", description="Roll a number between 1 and 100")
     async def roll(self, interaction: discord.Interaction):
