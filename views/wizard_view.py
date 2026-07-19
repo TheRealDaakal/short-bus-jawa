@@ -18,6 +18,24 @@ def _ping_content(session) -> str | None:
     return None
 
 
+def _previous_step(session) -> int:
+    """
+    Step 4 (raid size) is skipped entirely for lair bosses, which are
+    always 8-man - so going back from step 5 needs to land on step 3
+    instead of the normally-adjacent step 4 in that case.
+    """
+
+    if session.step == 5:
+        from utils.swtor_content import available_raid_sizes
+
+        sizes = available_raid_sizes(session.operation) if session.operation else [8]
+        if sizes != [8]:
+            return 4
+        return 3
+
+    return session.step - 1
+
+
 class WizardView(discord.ui.View):
     def __init__(self, owner_id: int):
         super().__init__(timeout=300)
@@ -73,6 +91,9 @@ class WizardView(discord.ui.View):
             case 11:
                 self.build_review()
 
+        if self.session.step > 1:
+            self.add_item(BackButton())
+
         self.add_item(CancelButton())
 
     def build_faction(self):
@@ -113,6 +134,24 @@ class WizardView(discord.ui.View):
 
     def build_review(self):
         self.add_item(CreateRaidButton())
+
+
+class BackButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="⬅ Back", style=discord.ButtonStyle.gray, row=4)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: WizardView = self.view
+        session = view.session
+
+        session.step = _previous_step(session)
+
+        view.refresh()
+
+        await interaction.response.edit_message(
+            embed=build_wizard_embed(session),
+            view=view,
+        )
 
 
 class CancelButton(discord.ui.Button):

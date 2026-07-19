@@ -167,3 +167,21 @@ class RaidView(View):
         from views.edit_raid_modal import EditRaidModal
 
         await interaction.response.send_modal(EditRaidModal(self.raid_id))
+
+    @discord.ui.button(label="📢 Move Channel", style=discord.ButtonStyle.secondary, row=2)
+    async def move_channel(self, interaction: discord.Interaction, button: Button):
+
+        if not PermissionService.is_officer(interaction.user):
+            await interaction.response.send_message(
+                "❌ Only raid officers can move this raid to a different channel.",
+                ephemeral=True,
+            )
+            return
+
+        from views.move_channel_select import MoveChannelView
+
+        await interaction.response.send_message(
+            "Select the channel to move this raid to:",
+            view=MoveChannelView(self.raid_id),
+            ephemeral=True,
+        )
