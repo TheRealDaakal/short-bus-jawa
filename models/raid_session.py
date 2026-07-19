@@ -79,6 +79,11 @@ class RaidSession:
         # "24h", "30m", "start", "deleted".
         self.reminders_sent: set[str] = set()
 
+        # Message IDs of reminder pings (24h/30m/start) sent to the raid
+        # channel, so they can be cleaned up alongside the board once the
+        # raid auto-deletes.
+        self.reminder_message_ids: list[int] = []
+
     def remove_player(self, user_id: int):
 
         self.tanks = [

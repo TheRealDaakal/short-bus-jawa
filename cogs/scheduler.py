@@ -133,7 +133,8 @@ class Scheduler(commands.Cog):
             return
 
         try:
-            await channel.send(text)
+            message = await channel.send(text)
+            session.reminder_message_ids.append(message.id)
         except discord.HTTPException:
             log.exception("Failed to send reminder for raid #%s", session.raid_id)
 
@@ -148,6 +149,15 @@ class Scheduler(commands.Cog):
                 pass
             except discord.HTTPException:
                 log.exception("Failed to delete raid board for raid #%s", raid_id)
+
+            for reminder_message_id in session.reminder_message_ids:
+                try:
+                    reminder_message = await channel.fetch_message(reminder_message_id)
+                    await reminder_message.delete()
+                except discord.NotFound:
+                    pass
+                except discord.HTTPException:
+                    log.exception("Failed to delete reminder message %s for raid #%s", reminder_message_id, raid_id)
 
             try:
                 cleanup_message = await channel.send(random.choice(CLEANUP_MESSAGES))
