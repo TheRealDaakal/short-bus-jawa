@@ -12,8 +12,9 @@ live yet - add it here once it actually ships and has a name.
 
 Fields:
 - name: display name, used as the value stored on raids
-- type: "operation" (8/16-man, multiple bosses) or "lair_boss" (single
-  boss, 8-man only, no Master/Nightmare Mode)
+- type: "operation" (multiple bosses) or "lair_boss" (single boss). Both
+  are playable at 8-man and 16-man; lair bosses just lack Master/
+  Nightmare Mode by default (see story_veteran_only).
 - story_veteran_only: True if this content has no Master/Nightmare Mode
 """
 
@@ -89,9 +90,16 @@ def available_difficulties(name: str) -> list[str]:
 
 
 def available_raid_sizes(name: str) -> list[int]:
-    """Returns the raid sizes that actually exist for this content."""
+    """
+    Returns the raid sizes that actually exist for this content.
 
-    if is_lair_boss(name):
-        return [8]
+    Every current lair boss (Xenoanalyst II, The Eyeless, Golden Fury,
+    Colossal Monolith, Geonosian Hive Queen, Relentless Replication) is
+    playable in both 8-man and 16-man Story/Veteran groups, same as
+    operations - the only thing that sets lair bosses apart is the lack
+    of a Master/Nightmare Mode (see available_difficulties). There is
+    currently no 8-man-only content, but this stays name-keyed so a
+    future exception can be added without touching any callers.
+    """
 
     return [8, 16]
