@@ -1,7 +1,7 @@
 import logging
 
 import discord
-from discord.ui import View, Button
+from discord.ui import DynamicItem, View, Button
 
 from services.raid_manager import RaidManager
 from services.permission_service import PermissionService
@@ -11,81 +11,163 @@ from views.combat_style_select import CombatStyleView
 log = logging.getLogger(__name__)
 
 
+async def _require_session(interaction: discord.Interaction, raid_id: int):
+    """
+    Every raid board button is a DynamicItem (see below) so it keeps
+    working on messages posted before the current process started - but
+    that means there's no bound RaidView.interaction_check to rely on,
+    since dynamic items are matched by custom_id alone, not by the
+    original view instance. Each button must call this first instead.
+
+    In-memory raid state (RaidManager.active_raids) doesn't survive a
+    bot restart, so this is also what tells a user their old raid board
+    needs to be recreated.
+    """
+
+    session = RaidManager.get_session(raid_id)
+
+    if session is None:
+        await interaction.response.send_message(
+            "⚠️ This raid's live data is no longer available - this can happen after "
+            "a bot restart. Please ask an officer to create a new raid board.",
+            ephemeral=True,
+        )
+
+    return session
+
+
 class RaidView(View):
     def __init__(self, raid_id: int):
         super().__init__(timeout=None)
 
         self.raid_id = raid_id
 
-    @property
-    def session(self):
-        return RaidManager.get_session(self.raid_id)
+        session = RaidManager.get_session(raid_id)
+        locked = session.locked if session is not None else False
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if self.session is None:
-            await interaction.response.send_message(
-                "⚠️ This raid's live data is no longer available - this can happen after "
-                "a bot restart. Please ask an officer to create a new raid board.",
-                ephemeral=True,
-            )
-            return False
+        self.add_item(TankButton(raid_id))
+        self.add_item(HealerButton(raid_id))
+        self.add_item(DpsButton(raid_id))
+        self.add_item(BenchButton(raid_id))
+        self.add_item(FloaterButton(raid_id))
+        self.add_item(LeaveButton(raid_id))
+        self.add_item(LockButton(raid_id, locked))
+        self.add_item(FinishButton(raid_id))
+        self.add_item(EditRaidButton(raid_id))
+        self.add_item(MoveChannelButton(raid_id))
 
-        return True
 
-    # -------------------------
-    # Signups
-    # -------------------------
+# -------------------------
+# Signups
+# -------------------------
 
-    @discord.ui.button(label="🛡 Tank", style=discord.ButtonStyle.blurple, row=0)
-    async def tank(self, interaction: discord.Interaction, button: Button):
+class TankButton(DynamicItem[Button], template=r"raid_tank:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="🛡 Tank", style=discord.ButtonStyle.blurple, row=0, custom_id=f"raid_tank:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        if await _require_session(interaction, self.raid_id) is None:
+            return
 
         await interaction.response.send_message(
             "Choose your Combat Style",
-            view=CombatStyleView(
-                raid_id=self.raid_id,
-                role="Tank",
-            ),
+            view=CombatStyleView(raid_id=self.raid_id, role="Tank"),
             ephemeral=True,
         )
 
-    @discord.ui.button(label="⚕️ Healer", style=discord.ButtonStyle.green, row=0)
-    async def healer(self, interaction: discord.Interaction, button: Button):
+
+class HealerButton(DynamicItem[Button], template=r"raid_healer:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="⚕️ Healer", style=discord.ButtonStyle.green, row=0, custom_id=f"raid_healer:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        if await _require_session(interaction, self.raid_id) is None:
+            return
 
         await interaction.response.send_message(
             "Choose your Combat Style",
-            view=CombatStyleView(
-                raid_id=self.raid_id,
-                role="Healer",
-            ),
+            view=CombatStyleView(raid_id=self.raid_id, role="Healer"),
             ephemeral=True,
         )
 
-    @discord.ui.button(label="⚔️ DPS", style=discord.ButtonStyle.red, row=0)
-    async def dps(self, interaction: discord.Interaction, button: Button):
+
+class DpsButton(DynamicItem[Button], template=r"raid_dps:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="⚔️ DPS", style=discord.ButtonStyle.red, row=0, custom_id=f"raid_dps:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        if await _require_session(interaction, self.raid_id) is None:
+            return
 
         await interaction.response.send_message(
             "Choose your Combat Style",
-            view=CombatStyleView(
-                raid_id=self.raid_id,
-                role="DPS",
-            ),
+            view=CombatStyleView(raid_id=self.raid_id, role="DPS"),
             ephemeral=True,
         )
 
-    @discord.ui.button(label="🪑 Bench", style=discord.ButtonStyle.secondary, row=1)
-    async def bench(self, interaction: discord.Interaction, button: Button):
 
-        RaidManager.join_bench(self.session, interaction.user)
+class BenchButton(DynamicItem[Button], template=r"raid_bench:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="🪑 Bench", style=discord.ButtonStyle.secondary, row=1, custom_id=f"raid_bench:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        session = await _require_session(interaction, self.raid_id)
+        if session is None:
+            return
+
+        RaidManager.join_bench(session, interaction.user)
 
         await interaction.response.edit_message(
-            embed=build_raid_board_embed(self.session),
-            view=self,
+            embed=build_raid_board_embed(session),
+            view=RaidView(self.raid_id),
         )
 
-    @discord.ui.button(label="🌊 Floater", style=discord.ButtonStyle.secondary, row=1)
-    async def floater(self, interaction: discord.Interaction, button: Button):
 
-        success = RaidManager.join_floater(self.session, interaction.user)
+class FloaterButton(DynamicItem[Button], template=r"raid_floater:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="🌊 Floater", style=discord.ButtonStyle.secondary, row=1, custom_id=f"raid_floater:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        session = await _require_session(interaction, self.raid_id)
+        if session is None:
+            return
+
+        success = RaidManager.join_floater(session, interaction.user)
 
         if not success:
             await interaction.response.send_message(
@@ -95,26 +177,55 @@ class RaidView(View):
             return
 
         await interaction.response.edit_message(
-            embed=build_raid_board_embed(self.session),
-            view=self,
+            embed=build_raid_board_embed(session),
+            view=RaidView(self.raid_id),
         )
 
-    @discord.ui.button(label="❌ Leave", style=discord.ButtonStyle.gray, row=1)
-    async def leave(self, interaction: discord.Interaction, button: Button):
 
-        RaidManager.leave(self.session, interaction.user)
+class LeaveButton(DynamicItem[Button], template=r"raid_leave:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="❌ Leave", style=discord.ButtonStyle.gray, row=1, custom_id=f"raid_leave:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        session = await _require_session(interaction, self.raid_id)
+        if session is None:
+            return
+
+        RaidManager.leave(session, interaction.user)
 
         await interaction.response.edit_message(
-            embed=build_raid_board_embed(self.session),
-            view=self,
+            embed=build_raid_board_embed(session),
+            view=RaidView(self.raid_id),
         )
 
-    # -------------------------
-    # Officer Controls
-    # -------------------------
 
-    @discord.ui.button(label="🔒 Lock", style=discord.ButtonStyle.danger, row=2)
-    async def lock_toggle(self, interaction: discord.Interaction, button: Button):
+# -------------------------
+# Officer Controls
+# -------------------------
+
+class LockButton(DynamicItem[Button], template=r"raid_lock:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int, locked: bool = False):
+        label = "🔓 Unlock" if locked else "🔒 Lock"
+        super().__init__(
+            Button(label=label, style=discord.ButtonStyle.danger, row=2, custom_id=f"raid_lock:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        session = await _require_session(interaction, self.raid_id)
+        if session is None:
+            return
 
         if not PermissionService.is_officer(interaction.user):
             await interaction.response.send_message(
@@ -123,22 +234,32 @@ class RaidView(View):
             )
             return
 
-        session = self.session
-
         if session.locked:
             RaidManager.unlock_raid(session)
-            button.label = "🔒 Lock"
         else:
             RaidManager.lock_raid(session)
-            button.label = "🔓 Unlock"
 
         await interaction.response.edit_message(
             embed=build_raid_board_embed(session),
-            view=self,
+            view=RaidView(self.raid_id),
         )
 
-    @discord.ui.button(label="🏁 Finish", style=discord.ButtonStyle.primary, row=2)
-    async def finish(self, interaction: discord.Interaction, button: Button):
+
+class FinishButton(DynamicItem[Button], template=r"raid_finish:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="🏁 Finish", style=discord.ButtonStyle.primary, row=2, custom_id=f"raid_finish:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        session = await _require_session(interaction, self.raid_id)
+        if session is None:
+            return
 
         if not PermissionService.is_officer(interaction.user):
             await interaction.response.send_message(
@@ -150,12 +271,25 @@ class RaidView(View):
         RaidManager.finish_raid(self.raid_id)
 
         await interaction.response.edit_message(
-            embed=build_raid_board_embed(self.session),
-            view=self,
+            embed=build_raid_board_embed(session),
+            view=RaidView(self.raid_id),
         )
 
-    @discord.ui.button(label="✏️ Edit Raid", style=discord.ButtonStyle.secondary, row=2)
-    async def edit_raid(self, interaction: discord.Interaction, button: Button):
+
+class EditRaidButton(DynamicItem[Button], template=r"raid_edit:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(label="✏️ Edit Raid", style=discord.ButtonStyle.secondary, row=2, custom_id=f"raid_edit:{raid_id}")
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        if await _require_session(interaction, self.raid_id) is None:
+            return
 
         if not PermissionService.is_officer(interaction.user):
             await interaction.response.send_message(
@@ -168,8 +302,26 @@ class RaidView(View):
 
         await interaction.response.send_modal(EditRaidModal(self.raid_id))
 
-    @discord.ui.button(label="📢 Move Channel", style=discord.ButtonStyle.secondary, row=2)
-    async def move_channel(self, interaction: discord.Interaction, button: Button):
+
+class MoveChannelButton(DynamicItem[Button], template=r"raid_move_channel:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(
+                label="📢 Move Channel",
+                style=discord.ButtonStyle.secondary,
+                row=2,
+                custom_id=f"raid_move_channel:{raid_id}",
+            )
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        if await _require_session(interaction, self.raid_id) is None:
+            return
 
         if not PermissionService.is_officer(interaction.user):
             await interaction.response.send_message(

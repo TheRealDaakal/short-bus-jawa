@@ -70,6 +70,21 @@ class RaidBot(commands.Bot):
         self.add_view(TicketPanelView())
         self.add_view(TicketCloseView())
 
+        # Raid board buttons are DynamicItems (custom_id encodes the raid
+        # ID) rather than a plain persistent view, since each raid board
+        # needs its own raid_id routed back in - a single add_view() can't
+        # cover that. This registration is what lets buttons on raid
+        # boards posted before this process started respond at all,
+        # instead of silently timing out client-side.
+        from views.raid_view import (
+            TankButton, HealerButton, DpsButton, BenchButton, FloaterButton,
+            LeaveButton, LockButton, FinishButton, EditRaidButton, MoveChannelButton,
+        )
+        self.add_dynamic_items(
+            TankButton, HealerButton, DpsButton, BenchButton, FloaterButton,
+            LeaveButton, LockButton, FinishButton, EditRaidButton, MoveChannelButton,
+        )
+
         self.watchdog_ping.start()
 
         await self._sync_commands()
