@@ -1,34 +1,8 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
 import discord
 
 from utils.constants import EMOJIS
 
 DIVIDER = "━━━━━━━━━━━━━━━━━━━━"
-
-
-def _local_end_time(session) -> str | None:
-    """
-    Formats raid_end_timestamp back into a plain time string in the
-    raid's own timezone, e.g. "7:00 PM" - the same frame of reference as
-    the plain Date/Time fields, so it doesn't shift per viewer.
-    """
-
-    end_timestamp = getattr(session, "raid_end_timestamp", None)
-    timezone = getattr(session, "raid_timezone", None)
-
-    if not end_timestamp or not timezone:
-        return None
-
-    try:
-        tz = ZoneInfo(timezone)
-    except ZoneInfoNotFoundError:
-        return None
-
-    local_dt = datetime.fromtimestamp(end_timestamp, tz=tz)
-
-    return local_dt.strftime("%I:%M %p").lstrip("0")
 
 
 def format_role(players, limit):
@@ -106,18 +80,17 @@ def _build_raid_embed(session):
     if session.raid_date:
         description += f"\n📅 **Date**\n{session.raid_date}"
 
-    if session.raid_time:
-        description += f"\n\n🕗 **Time**\n{session.raid_time}"
+    # Intentionally using Discord's <t:...> auto-localizing timestamp
+    # tags here (not the plain raid_time string) - they render in each
+    # *viewer's* own local timezone, which is what we want: everyone
+    # sees the raid's actual start time converted to their own clock,
+    # instead of the raid leader's original stated time with no
+    # indication of what timezone it's even in.
+    if getattr(session, "raid_timestamp", None):
+        description += f"\n\n<t:{session.raid_timestamp}:F> (<t:{session.raid_timestamp}:R>)"
 
-    # Deliberately NOT using Discord's <t:...> auto-localizing timestamp
-    # tags here - they render in each *viewer's* local timezone, which
-    # made the raid look like it started at a different time depending
-    # on who was looking at it. The Date/Time fields above are the one
-    # official start time (in the raid leader's chosen timezone) and
-    # should be the only time shown.
-    end_time = _local_end_time(session)
-    if end_time:
-        description += f"\n\n🏁 **Ends around**\n{end_time}"
+    if getattr(session, "raid_end_timestamp", None):
+        description += f"\n🏁 **Ends around** <t:{session.raid_end_timestamp}:t>"
 
     if session.raid_leader:
         description += f"\n\n👑 **Raid Leader**\n{session.raid_leader}"
