@@ -53,7 +53,14 @@ class RaidBot(commands.Bot):
             intents=intents,
         )
 
+        # Only ever run once, in on_ready - guards against re-running the
+        # database restore if on_ready somehow fires more than once.
+        self._raids_restored = False
+
     async def setup_hook(self):
+        from services.raid_manager import RaidManager
+        RaidManager.bot = self
+
         for extension in EXTENSIONS:
             try:
                 await self.load_extension(extension)
@@ -117,6 +124,16 @@ class RaidBot(commands.Bot):
     async def on_ready(self):
         log.info("Logged in as %s (id=%s)", self.user, self.user.id)
         log.info("Connected to %d guild(s)", len(self.guilds))
+
+        if not self._raids_restored:
+            self._raids_restored = True
+
+            from services.raid_restore import restore_active_raids
+            try:
+                await restore_active_raids(self)
+            except Exception:
+                log.exception("Failed to restore active raids from the database")
+
         notify_ready()
 
     async def on_disconnect(self):

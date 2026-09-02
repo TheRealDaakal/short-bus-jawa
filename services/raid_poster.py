@@ -77,6 +77,8 @@ async def create_and_post_raid(
     raid_session.message_id = message.id
     raid_session.channel_id = channel.id
 
+    RaidManager.persist(raid_session)
+
     log.info(
         "Raid #%s created in guild=%s channel=%s by %s",
         raid_id, guild_id, channel.id, created_by.id,

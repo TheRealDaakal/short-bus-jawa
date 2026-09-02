@@ -57,6 +57,8 @@ class MoveChannelSelect(discord.ui.ChannelSelect):
         session.message_id = new_message.id
         session.channel_id = new_channel.id
 
+        RaidManager.persist(session)
+
         old_channel = interaction.guild.get_channel(old_channel_id) if old_channel_id else None
 
         if old_channel is not None and old_message_id:

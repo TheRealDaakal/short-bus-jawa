@@ -4,12 +4,25 @@ import discord
 
 
 @dataclass
+class StoredMember:
+    """
+    Stand-in for a discord.Member used when restoring a raid roster from
+    the database after a restart and the real member can't be resolved
+    (e.g. they left the server since signing up). Only needs to satisfy
+    what RaidMember actually reads off .member.
+    """
+
+    id: int
+    display_name: str
+
+
+@dataclass
 class RaidMember:
     """
     Represents a player signed up for a raid.
     """
 
-    member: discord.Member
+    member: discord.Member | StoredMember
 
     combat_style: str = ""
     discipline: str = ""

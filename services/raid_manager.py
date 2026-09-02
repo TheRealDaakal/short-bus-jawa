@@ -6,9 +6,28 @@ from models.raid_member import RaidMember
 
 class RaidManager:
 
+    # Set once in bot.py's setup_hook - needed by refresh_board() to look
+    # up a raid's channel when a restored session has no cached Message
+    # object yet.
     bot = None
 
     active_raids: dict[int, RaidSession] = {}
+
+    # -------------------------
+    # Persistence
+    # -------------------------
+
+    @classmethod
+    def persist(cls, session):
+        """
+        Saves the live session's current state to the database so it
+        survives a bot restart. Call this after any mutation - signups,
+        lock/unlock, finish, edits, or a channel move.
+        """
+
+        from services import raid_storage
+
+        raid_storage.save_raid_state(session)
 
     # -------------------------
     # Session Management
@@ -122,6 +141,8 @@ class RaidManager:
             )
         )
 
+        cls.persist(session)
+
         return True
 
     @classmethod
@@ -151,6 +172,8 @@ class RaidManager:
                 discipline=discipline,
             )
         )
+
+        cls.persist(session)
 
         return True
 
@@ -182,6 +205,8 @@ class RaidManager:
             )
         )
 
+        cls.persist(session)
+
         return True
 
     @classmethod
@@ -205,6 +230,8 @@ class RaidManager:
                 discipline=discipline,
             )
         )
+
+        cls.persist(session)
 
         return True
 
@@ -239,12 +266,16 @@ class RaidManager:
             )
         )
 
+        cls.persist(session)
+
         return True
 
     @classmethod
     def leave(cls, session, user):
 
         session.remove_player(user.id)
+
+        cls.persist(session)
 
     # -------------------------
     # Officer Tools
@@ -255,10 +286,14 @@ class RaidManager:
 
         session.locked = True
 
+        cls.persist(session)
+
     @classmethod
     def unlock_raid(cls, session):
 
         session.locked = False
+
+        cls.persist(session)
 
     @classmethod
     def finish_raid(cls, raid_id):
@@ -268,6 +303,8 @@ class RaidManager:
         if session:
             session.completed = True
 
+            cls.persist(session)
+
     # -------------------------
     # Refresh Raid Board
     # -------------------------
@@ -275,13 +312,31 @@ class RaidManager:
     @classmethod
     async def refresh_board(cls, session):
 
-        if session.message is None:
+        import discord
+
+        message = session.message
+
+        # A session restored from the database on startup has no cached
+        # Message object yet (it's never been sent/edited by this
+        # process) - fetch it once from its known channel/message ID
+        # instead of silently doing nothing.
+        if message is None and cls.bot is not None and session.channel_id and session.message_id:
+            channel = cls.bot.get_channel(session.channel_id)
+
+            if channel is not None:
+                try:
+                    message = await channel.fetch_message(session.message_id)
+                    session.message = message
+                except discord.HTTPException:
+                    return
+
+        if message is None:
             return
 
         from utils.embed_builder import build_raid_board_embed
         from views.raid_view import RaidView
 
-        await session.message.edit(
+        await message.edit(
             embed=build_raid_board_embed(session),
             view=RaidView(session.raid_id),
         )

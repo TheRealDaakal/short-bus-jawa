@@ -72,6 +72,30 @@ def initialize_database():
             ON raids (guild_id)
         """)
 
+        # Live raid state (roster, lock status, which message it's posted
+        # to, etc.) so an active raid survives a bot restart instead of
+        # losing its signups - previously this table only ever recorded
+        # what the raid was created with, never what happened to it
+        # afterward.
+        for column, ddl in (
+            ("channel_id", "INTEGER"),
+            ("message_id", "INTEGER"),
+            ("faction", "TEXT"),
+            ("raid_size", "INTEGER"),
+            ("raid_timestamp", "INTEGER"),
+            ("raid_end_timestamp", "INTEGER"),
+            ("raid_timezone", "TEXT"),
+            ("raid_leader", "TEXT"),
+            ("raid_leader_id", "INTEGER"),
+            ("locked", "INTEGER DEFAULT 0"),
+            ("completed", "INTEGER DEFAULT 0"),
+            ("roster_json", "TEXT"),
+        ):
+            try:
+                cursor.execute(f"ALTER TABLE raids ADD COLUMN {column} {ddl}")
+            except sqlite3.OperationalError:
+                pass
+
         # Per-guild configuration (mod-log channel, etc).
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS guild_settings (

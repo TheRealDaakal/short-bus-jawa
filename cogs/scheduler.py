@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands, tasks
 
 from services.raid_manager import RaidManager
-from services import raid_template_service
+from services import raid_storage, raid_template_service
 from services.raid_poster import create_and_post_raid
 from utils.constants import CLEANUP_MESSAGES, AUTO_DELETE_GRACE_MINUTES
 
@@ -168,6 +168,8 @@ class Scheduler(commands.Cog):
                 await cleanup_message.delete(delay=CLEANUP_MESSAGE_LIFETIME_SECONDS)
             except discord.HTTPException:
                 pass
+
+        raid_storage.mark_completed(raid_id)
 
         log.info("Auto-deleted raid #%s", raid_id)
         RaidManager.remove_session(raid_id)

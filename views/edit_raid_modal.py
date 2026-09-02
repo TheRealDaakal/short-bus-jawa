@@ -107,6 +107,8 @@ class EditRaidModal(discord.ui.Modal, title="Edit Raid"):
             session.raid_timestamp = new_start
             session.raid_end_timestamp = new_start + duration
 
+        RaidManager.persist(session)
+
         await RaidManager.refresh_board(session)
 
         await interaction.response.send_message(
