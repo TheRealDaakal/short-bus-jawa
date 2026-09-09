@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import timedelta
 
 import discord
@@ -50,7 +51,10 @@ class AutoMod(commands.Cog):
         content_lower = message.content.lower()
 
         for word in banned_words:
-            if word in content_lower:
+            # Word-boundary match, not substring - otherwise banning
+            # "ass" would also flag "Assassin" (an actual SWTOR class),
+            # "class", "hassle", etc.
+            if re.search(rf"\b{re.escape(word)}\b", content_lower):
                 return f"Used a banned word ({word})"
 
         return None

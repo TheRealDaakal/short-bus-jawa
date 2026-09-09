@@ -68,6 +68,7 @@ class Scheduler(commands.Cog):
         # firing reminders for a board that's no longer there.
         if not await self._board_still_exists(session):
             log.info("Raid #%s board was deleted - cancelling reminders", raid_id)
+            raid_storage.mark_completed(raid_id)
             RaidManager.remove_session(raid_id)
             return
 
