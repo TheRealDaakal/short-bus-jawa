@@ -55,6 +55,7 @@ class RaidView(View):
         self.add_item(FinishButton(raid_id))
         self.add_item(EditRaidButton(raid_id))
         self.add_item(MoveChannelButton(raid_id))
+        self.add_item(ResizeButton(raid_id))
 
 
 # -------------------------
@@ -335,5 +336,42 @@ class MoveChannelButton(DynamicItem[Button], template=r"raid_move_channel:(?P<ra
         await interaction.response.send_message(
             "Select the channel to move this raid to:",
             view=MoveChannelView(self.raid_id),
+            ephemeral=True,
+        )
+
+
+class ResizeButton(DynamicItem[Button], template=r"raid_resize:(?P<raid_id>[0-9]+)"):
+    def __init__(self, raid_id: int):
+        super().__init__(
+            Button(
+                label="🔁 Raid Size",
+                style=discord.ButtonStyle.secondary,
+                row=2,
+                custom_id=f"raid_resize:{raid_id}",
+            )
+        )
+        self.raid_id = raid_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match, /):
+        return cls(int(match["raid_id"]))
+
+    async def callback(self, interaction: discord.Interaction):
+        session = await _require_session(interaction, self.raid_id)
+        if session is None:
+            return
+
+        if not PermissionService.is_officer(interaction.user):
+            await interaction.response.send_message(
+                "❌ Only raid officers can change this raid's size.",
+                ephemeral=True,
+            )
+            return
+
+        from views.raid_size_select import RaidSizeView
+
+        await interaction.response.send_message(
+            "Switch this raid between 8-Player and 16-Player:",
+            view=RaidSizeView(self.raid_id, session.raid_size),
             ephemeral=True,
         )

@@ -1,5 +1,13 @@
 from models.raid_member import RaidMember
 
+# Role caps for each supported raid size - the single source of truth
+# for both initial creation and later resizing, so the two can never
+# drift out of sync with each other.
+ROLE_CAPS = {
+    8: (2, 2, 4),
+    16: (2, 4, 10),
+}
+
 
 class RaidSession:
     def __init__(
@@ -51,15 +59,7 @@ class RaidSession:
 
         self.faction = faction
         self.raid_size = raid_size
-
-        if raid_size == 8:
-            self.max_tanks = 2
-            self.max_healers = 2
-            self.max_dps = 4
-        else:
-            self.max_tanks = 2
-            self.max_healers = 4
-            self.max_dps = 10
+        self.max_tanks, self.max_healers, self.max_dps = ROLE_CAPS.get(raid_size, ROLE_CAPS[8])
 
         # -------------------------
         # Raid Members
@@ -83,6 +83,10 @@ class RaidSession:
         # channel, so they can be cleaned up alongside the board once the
         # raid auto-deletes.
         self.reminder_message_ids: list[int] = []
+
+    def resize(self, raid_size: int):
+        self.raid_size = raid_size
+        self.max_tanks, self.max_healers, self.max_dps = ROLE_CAPS.get(raid_size, ROLE_CAPS[8])
 
     def remove_player(self, user_id: int):
 

@@ -1,6 +1,6 @@
 import time
 
-from models.raid_session import RaidSession
+from models.raid_session import RaidSession, ROLE_CAPS
 from models.raid_member import RaidMember
 
 
@@ -294,6 +294,48 @@ class RaidManager:
         session.locked = False
 
         cls.persist(session)
+
+    @classmethod
+    def resize_raid(cls, session, raid_size: int) -> str | None:
+        """
+        Switches a raid between 8-man and 16-man. Returns None on
+        success, or a user-facing error string if the current roster
+        won't fit the new size's role caps - shrinking never bumps
+        people off the roster automatically, since that would silently
+        drop someone's signup.
+        """
+
+        max_tanks, max_healers, max_dps = ROLE_CAPS.get(raid_size, ROLE_CAPS[8])
+
+        if len(session.tanks) > max_tanks:
+            return (
+                f"Can't switch to {raid_size}-Player - {len(session.tanks)} tanks are signed up "
+                f"but only {max_tanks} fit. Remove some first."
+            )
+
+        if len(session.healers) > max_healers:
+            return (
+                f"Can't switch to {raid_size}-Player - {len(session.healers)} healers are signed up "
+                f"but only {max_healers} fit. Remove some first."
+            )
+
+        if len(session.dps) > max_dps:
+            return (
+                f"Can't switch to {raid_size}-Player - {len(session.dps)} DPS are signed up "
+                f"but only {max_dps} fit. Remove some first."
+            )
+
+        if cls._total_signed_up(session) > raid_size:
+            return (
+                f"Can't switch to {raid_size}-Player - {cls._total_signed_up(session)} people are "
+                f"signed up in total. Move some to Bench first."
+            )
+
+        session.resize(raid_size)
+
+        cls.persist(session)
+
+        return None
 
     @classmethod
     def finish_raid(cls, raid_id):

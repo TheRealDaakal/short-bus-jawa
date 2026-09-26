@@ -86,10 +86,12 @@ class RaidBot(commands.Bot):
         from views.raid_view import (
             TankButton, HealerButton, DpsButton, BenchButton, FloaterButton,
             LeaveButton, LockButton, FinishButton, EditRaidButton, MoveChannelButton,
+            ResizeButton,
         )
         self.add_dynamic_items(
             TankButton, HealerButton, DpsButton, BenchButton, FloaterButton,
             LeaveButton, LockButton, FinishButton, EditRaidButton, MoveChannelButton,
+            ResizeButton,
         )
 
         self.watchdog_ping.start()
